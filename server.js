@@ -102,6 +102,20 @@ app.post("/generate-pdf", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || "";
+
 app.listen(PORT, () => {
   console.log(`Salary Formula PDF server running on port ${PORT}`);
+
+  // ── Self-ping every 10 min to prevent Render free tier sleep ──
+  if (RENDER_URL) {
+    setInterval(async () => {
+      try {
+        const res = await fetch(`${RENDER_URL}/health`);
+        console.log("Keep-alive ping:", res.status);
+      } catch (err) {
+        console.warn("Keep-alive ping failed:", err.message);
+      }
+    }, 10 * 60 * 1000); // every 10 minutes
+  }
 });
