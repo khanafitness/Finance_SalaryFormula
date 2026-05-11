@@ -10,6 +10,9 @@ app.use(express.json());
 
 // ── Find Chrome by walking directory ─────────────────────────
 function findChromeExecutable() {
+  // Try known path first
+  const known = "/opt/render/project/.chrome/chrome/linux-148.0.7778.97/chrome-linux64/chrome";
+  if (fs.existsSync(known)) return known;
   const base = "/opt/render/project/.chrome";
   function walk(dir) {
     if (!fs.existsSync(dir)) return null;
@@ -17,7 +20,11 @@ function findChromeExecutable() {
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) { const found = walk(full); if (found) return found; }
-      if (entry.isFile() && entry.name === "chrome") return full;
+      // Match file named exactly "chrome" with no extension
+      if (entry.isFile() && entry.name === "chrome") {
+        console.log("Found chrome at:", full);
+        return full;
+      }
     }
     return null;
   }
@@ -26,18 +33,18 @@ function findChromeExecutable() {
 
 // ── Health check ──────────────────────────────────────────────
 app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", chrome: findChromeExecutable() || "NOT FOUND" });
 });
 
 // ── Launch Puppeteer ──────────────────────────────────────────
 async function launchBrowser() {
   const executablePath = findChromeExecutable();
   if (!executablePath) throw new Error("Chrome not found in /opt/render/project/.chrome");
-  console.log("Chrome found at:", executablePath);
+  console.log("Launching Chrome at:", executablePath);
   return puppeteer.launch({
     executablePath,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-first-run", "--no-zygote", "--single-process"],
-    headless: "new",
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
   });
 }
 
@@ -101,23 +108,15 @@ const RENDER_URL = process.env.RENDER_EXTERNAL_URL || "";
 app.listen(PORT, () => {
   console.log(`Salary Formula PDF server running on port ${PORT}`);
 
-  // Debug: show Chrome directory contents
+  // Debug on startup
   const chromeBase = "/opt/render/project/.chrome";
   if (fs.existsSync(chromeBase)) {
-    console.log(".chrome EXISTS — contents:", JSON.stringify(fs.readdirSync(chromeBase)));
-    // Walk one level deeper
-    for (const d of fs.readdirSync(chromeBase)) {
-      const sub = chromeBase + "/" + d;
-      if (fs.statSync(sub).isDirectory()) {
-        console.log(`.chrome/${d}:`, JSON.stringify(fs.readdirSync(sub)));
-      }
-    }
+    console.log(".chrome EXISTS");
+    const chromePath = findChromeExecutable();
+    console.log("Chrome executable:", chromePath || "NOT FOUND");
   } else {
     console.log(".chrome does NOT exist");
   }
-
-  const chromePath = findChromeExecutable();
-  console.log("Chrome found at:", chromePath || "NOT FOUND");
 
   if (RENDER_URL) {
     setInterval(async () => {
