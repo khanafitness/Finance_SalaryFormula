@@ -4,8 +4,8 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "build": "npm install",
-    "start": "npx @puppeteer/browsers install chrome@stable --path /opt/render/project/.chrome && node server.js"
+    "build": "npm install && npx @puppeteer/browsers install chrome@stable --path /opt/render/project/.chrome",
+    "start": "node server.js"
   },
   "engines": {
     "node": ">=18"
