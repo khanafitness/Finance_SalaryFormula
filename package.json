@@ -5,13 +5,14 @@
   "main": "server.js",
   "scripts": {
     "build": "npm install",
-    "start": "node server.js"
+    "start": "npx @puppeteer/browsers install chrome@stable --path /opt/render/project/.chrome && node server.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "puppeteer": "^21.3.8"
+    "puppeteer-core": "^21.3.8",
+    "@puppeteer/browsers": "^2.0.0"
   }
 }
