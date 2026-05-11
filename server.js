@@ -1,5 +1,5 @@
 import express from "express";
-import puppeteer from "puppeteer-core";
+import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -8,42 +8,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json());
 
-// ── Find Chrome by walking directory ─────────────────────────
-function findChromeExecutable() {
-  // Try known path first
-  const known = "/opt/render/project/.chrome/chrome/linux-148.0.7778.97/chrome-linux64/chrome";
-  if (fs.existsSync(known)) return known;
-  const base = "/opt/render/project/.chrome";
-  function walk(dir) {
-    if (!fs.existsSync(dir)) return null;
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) { const found = walk(full); if (found) return found; }
-      // Match file named exactly "chrome" with no extension
-      if (entry.isFile() && entry.name === "chrome") {
-        console.log("Found chrome at:", full);
-        return full;
-      }
-    }
-    return null;
-  }
-  return walk(base);
-}
-
 // ── Health check ──────────────────────────────────────────────
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", chrome: findChromeExecutable() || "NOT FOUND" });
+  res.json({ status: "ok" });
 });
 
 // ── Launch Puppeteer ──────────────────────────────────────────
 async function launchBrowser() {
-  const executablePath = findChromeExecutable();
-  if (!executablePath) throw new Error("Chrome not found in /opt/render/project/.chrome");
-  console.log("Launching Chrome at:", executablePath);
   return puppeteer.launch({
-    executablePath,
-    headless: true,
+    headless: "new",
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
   });
 }
@@ -78,7 +51,7 @@ app.post("/generate-pdf", async (req, res) => {
     if (!data.customer_name || !data.email || !data.mobile_number) {
       return res.status(400).json({ error: "Missing required fields: customer_name, email, mobile_number" });
     }
-    console.log("Generating Salary Formula PDF for:", data.customer_name);
+    console.log("Generating PDF for:", data.customer_name);
 
     const templatePath = path.join(__dirname, "templates", "salary_formula_template.html");
     if (!fs.existsSync(templatePath)) {
@@ -107,17 +80,6 @@ const RENDER_URL = process.env.RENDER_EXTERNAL_URL || "";
 
 app.listen(PORT, () => {
   console.log(`Salary Formula PDF server running on port ${PORT}`);
-
-  // Debug on startup
-  const chromeBase = "/opt/render/project/.chrome";
-  if (fs.existsSync(chromeBase)) {
-    console.log(".chrome EXISTS");
-    const chromePath = findChromeExecutable();
-    console.log("Chrome executable:", chromePath || "NOT FOUND");
-  } else {
-    console.log(".chrome does NOT exist");
-  }
-
   if (RENDER_URL) {
     setInterval(async () => {
       try {
