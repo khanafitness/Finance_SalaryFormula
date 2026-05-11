@@ -100,6 +100,25 @@ const RENDER_URL = process.env.RENDER_EXTERNAL_URL || "";
 
 app.listen(PORT, () => {
   console.log(`Salary Formula PDF server running on port ${PORT}`);
+
+  // Debug: show Chrome directory contents
+  const chromeBase = "/opt/render/project/.chrome";
+  if (fs.existsSync(chromeBase)) {
+    console.log(".chrome EXISTS — contents:", JSON.stringify(fs.readdirSync(chromeBase)));
+    // Walk one level deeper
+    for (const d of fs.readdirSync(chromeBase)) {
+      const sub = chromeBase + "/" + d;
+      if (fs.statSync(sub).isDirectory()) {
+        console.log(`.chrome/${d}:`, JSON.stringify(fs.readdirSync(sub)));
+      }
+    }
+  } else {
+    console.log(".chrome does NOT exist");
+  }
+
+  const chromePath = findChromeExecutable();
+  console.log("Chrome found at:", chromePath || "NOT FOUND");
+
   if (RENDER_URL) {
     setInterval(async () => {
       try {
